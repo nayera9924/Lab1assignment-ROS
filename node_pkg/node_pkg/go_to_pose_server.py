@@ -1,10 +1,12 @@
 
+
 import math
-import asyncio
+import time
 
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionServer, GoalResponse, CancelResponse
+from rclpy.executors import MultiThreadedExecutor
 from geometry_msgs.msg import Twist
 from turtlesim.msg import Pose
 
@@ -12,11 +14,11 @@ from interfaces_pkg.action import GoToPose
 
 
 def normalize_angle(angle):
-    """Normalize an angle to the range [-pi, pi]."""
     return math.atan2(math.sin(angle), math.cos(angle))
 
 
 class GoToPoseServer(Node):
+
     def __init__(self):
         super().__init__('go_to_pose_server')
 
@@ -62,9 +64,7 @@ class GoToPoseServer(Node):
             cancel_callback=self.cancel_callback
         )
 
-        self.get_logger().info(
-            'GoToPose Action Server is ready.'
-        )
+        self.get_logger().info('GoToPose Action Server is ready.')
 
     def pose_callback(self, msg):
         self.pose = msg
@@ -74,22 +74,12 @@ class GoToPoseServer(Node):
 
         if not all(math.isfinite(v) for v in
                    (target.x, target.y, target.yaw)):
-            self.get_logger().warning(
-                'Rejected goal: target coordinates must be finite.'
-            )
             return GoalResponse.REJECT
 
         if not (0.0 <= target.x <= 11.0 and
                 0.0 <= target.y <= 11.0):
-            self.get_logger().warning(
-                'Rejected goal: target is outside the turtlesim area.'
-            )
             return GoalResponse.REJECT
 
-        self.get_logger().info(
-            f'Accepted goal: x={target.x:.2f}, '
-            f'y={target.y:.2f}, yaw={target.yaw:.2f}'
-        )
         return GoalResponse.ACCEPT
 
     def cancel_callback(self, goal_handle):
@@ -99,20 +89,19 @@ class GoToPoseServer(Node):
     def stop_turtle(self):
         self.velocity_publisher.publish(Twist())
 
-    async def execute_callback(self, goal_handle):
+    def execute_callback(self, goal_handle):
         result = GoToPose.Result()
         feedback = GoToPose.Feedback()
         target = goal_handle.request.target_pose
 
         try:
-            # Wait until the first pose message arrives.
             while rclpy.ok() and self.pose is None:
                 if goal_handle.is_cancel_requested:
                     goal_handle.canceled()
                     result.success = False
                     result.message = 'Goal canceled.'
                     return result
-                await asyncio.sleep(0.05)
+                time.sleep(0.05)
 
             while rclpy.ok():
                 if goal_handle.is_cancel_requested:
@@ -123,6 +112,10 @@ class GoToPoseServer(Node):
                     return result
 
                 current = self.pose
+                if current is None:
+                    time.sleep(0.05)
+                    continue
+
                 dx = target.x - current.x
                 dy = target.y - current.y
                 distance = math.hypot(dx, dy)
@@ -138,7 +131,6 @@ class GoToPoseServer(Node):
                         desired_heading - current.theta
                     )
 
-                    # Turn toward the target before moving forward.
                     if abs(heading_error) > 0.15:
                         cmd.angular.z = max(
                             -self.max_angular_speed,
@@ -159,8 +151,8 @@ class GoToPoseServer(Node):
                                 4.0 * heading_error
                             )
                         )
+
                 else:
-                    # Position reached: rotate to the requested yaw.
                     yaw_error = normalize_angle(
                         target.yaw - current.theta
                     )
@@ -182,9 +174,8 @@ class GoToPoseServer(Node):
                     )
 
                 self.velocity_publisher.publish(cmd)
-                await asyncio.sleep(0.05)
+                time.sleep(0.05)
 
-            self.stop_turtle()
             result.success = False
             result.message = 'ROS 2 stopped before reaching the goal.'
             goal_handle.abort()
@@ -205,16 +196,20 @@ class GoToPoseServer(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = GoToPoseServer()
+    executor = MultiThreadedExecutor(num_threads=2)
+    executor.add_node(node)
 
     try:
-        rclpy.spin(node)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:
         node.stop_turtle()
+        executor.shutdown()
         node.destroy_node()
         rclpy.shutdown()
 
 
 if __name__ == '__main__':
     main()
+
