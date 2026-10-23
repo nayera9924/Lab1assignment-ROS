@@ -30,6 +30,7 @@ setup(
         'console_scripts': [
             'speed_control_node = node_pkg.speed_control_node:main',
             'go_to_pose_server = node_pkg.go_to_pose_server:main',
+            'square_action_server = node_pkg.square_action_server:main',
         ],
     },
 )
