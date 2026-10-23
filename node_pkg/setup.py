@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'speed_control_node = node_pkg.speed_control_node:main',
         ],
     },
 )
