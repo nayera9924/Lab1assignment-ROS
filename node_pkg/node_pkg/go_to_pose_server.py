@@ -9,6 +9,9 @@ from rclpy.action import ActionServer, GoalResponse, CancelResponse
 from rclpy.executors import MultiThreadedExecutor
 from geometry_msgs.msg import Twist
 from turtlesim.msg import Pose
+from turtlesim.srv import TeleportAbsolute, SetPen
+from std_srvs.srv import Empty as EmptySrv, Trigger
+from rclpy.callback_groups import ReentrantCallbackGroup
 
 from interfaces_pkg.action import GoToPose
 
@@ -22,6 +25,7 @@ class GoToPoseServer(Node):
     def __init__(self):
         super().__init__('go_to_pose_server')
 
+        self.cb_group = ReentrantCallbackGroup()
         self.declare_parameter('max_linear_speed', 2.0)
         self.declare_parameter('max_angular_speed', 2.0)
         self.declare_parameter('position_tolerance', 0.1)
@@ -42,6 +46,7 @@ class GoToPoseServer(Node):
 
         self.pose = None
 
+        #subscriber and publisher
         self.pose_subscriber = self.create_subscription(
             Pose,
             '/turtle1/pose',
@@ -55,6 +60,7 @@ class GoToPoseServer(Node):
             10
         )
 
+        #Action server
         self.action_server = ActionServer(
             self,
             GoToPose,
@@ -62,6 +68,19 @@ class GoToPoseServer(Node):
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback
+        )
+
+        # Clients
+        self.clear_client = self.create_client(EmptySrv, '/clear', callback_group=self.cb_group)
+        self.teleport_client = self.create_client(TeleportAbsolute, '/turtle1/teleport_absolute', callback_group=self.cb_group)
+        self.set_pen_client = self.create_client(SetPen, '/turtle1/set_pen', callback_group=self.cb_group)
+
+        # Reset service server
+        self.reset_service = self.create_service(
+            Trigger,
+            '/reset_turtle',
+            self.reset_callback,
+            callback_group=self.cb_group
         )
 
         self.get_logger().info('GoToPose Action Server is ready.')
@@ -88,6 +107,41 @@ class GoToPoseServer(Node):
 
     def stop_turtle(self):
         self.velocity_publisher.publish(Twist())
+
+    def reset_callback(self, request, response):
+        self.get_logger().info('Resetting turtlesim environment...')
+
+        # 1.stop turtle
+        self.stop_turtle()
+
+        # 2.stop drawing
+        pen_req = SetPen.Request()
+        pen_req.off = 1
+        self.set_pen_client.call_async(pen_req)
+
+        # 3.clear
+        clear_req = EmptySrv.Request()
+        self.clear_client.call_async(clear_req)
+
+        # 4.return turtle to origin
+        teleport_req = TeleportAbsolute.Request()
+        teleport_req.x = 5.544445
+        teleport_req.y = 5.544445
+        teleport_req.theta = 0.0
+        self.teleport_client.call_async(teleport_req)   #to can move after reset
+        time.sleep(0.05)
+        
+        # future = self.teleport_client.call_async(teleport_req)
+        # rclpy.spin_until_future_complete(self, future)
+
+        # 5.back to drawing
+        pen_req.off = 0
+        self.set_pen_client.call_async(pen_req)
+
+        response.success = True
+        response.message = 'Turtle reset successfully to home position!'
+        self.get_logger().info(response.message)
+        return response
 
     def execute_callback(self, goal_handle):
         result = GoToPose.Result()
