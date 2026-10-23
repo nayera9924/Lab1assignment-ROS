@@ -27,16 +27,18 @@ class SpeedControlNode(Node):
             self.get_logger().warn(response.message)
             return response
         
-        self.set_parameters([
-            rclpy.parameter.Parameter('max_linear_speed', rclpy.Parameter.Type.DOUBLE, request.max_linear_speed),
-            rclpy.parameter.Parameter('max_angular_speed', rclpy.Parameter.Type.DOUBLE, request.max_angular_speed)
-        ])
+        # self.set_parameters([
+        #     rclpy.parameter.Parameter('max_linear_speed', rclpy.Parameter.Type.DOUBLE, request.max_linear_speed),
+        #     rclpy.parameter.Parameter('max_angular_speed', rclpy.Parameter.Type.DOUBLE, request.max_angular_speed)
+        # ])
 
         self.max_linear_speed = request.max_linear_speed
         self.max_angular_speed = request.max_angular_speed
         
         response.success = True
         response.message = "Speed limits updated successfully!"
+
+        return response
     
 def main(args=None):
     import rclpy
