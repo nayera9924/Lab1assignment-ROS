@@ -1,7 +1,7 @@
 # Lab1assignment-ROS
 This project serves as a comprehensive simulation demonstrating the core concepts of ROS 2 focusing on inter-node communication through Services and Actions. It simulates a robotic control architecture using the turtlesim environment, where custom interfaces (.srv and .action), dynamic parameter management, multi-threaded execution, and system automation via launch files are integrated to orchestrate precise autonomous turtle navigation and path execution.
 
-##🛠️ Step-by-Step Guide & Testing Commands
+## 🛠️ Step-by-Step Guide & Testing Commands
 1.Before running any node or launch file, always build your workspace and source the setup script (you can put the source command in the bashrc):
 ```bash
 cd ~/mechatronics_ws
@@ -26,7 +26,7 @@ source install/setup.bash
 6.To command the turtle to automatically execute a complete square path by visiting all four corners sequentially:
 `ros2 action send_goal /draw_square interfaces_pkg/action/Square "{side_length: 2.0}" --feedback`
 
-##Some Project Detials
+## Some Project Detials
 
 Python Nodes (node_pkg):
 go_to_pose_server.py: The main control node. It uses a proportional controller to guide the turtle precisely to target coordinates, handles speed limits, and manages the reset/teleport service.
