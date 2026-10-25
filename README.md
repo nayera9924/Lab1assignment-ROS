@@ -1,31 +1,32 @@
 # Lab1assignment-ROS
 This project serves as a comprehensive simulation demonstrating the core concepts of ROS 2 focusing on inter-node communication through Services and Actions. It simulates a robotic control architecture using the turtlesim environment, where custom interfaces (.srv and .action), dynamic parameter management, multi-threaded execution, and system automation via launch files are integrated to orchestrate precise autonomous turtle navigation and path execution.
 
-🛠️ Step-by-Step Guide & Testing Commands
+##🛠️ Step-by-Step Guide & Testing Commands
 1.Before running any node or launch file, always build your workspace and source the setup script (you can put the source command in the bashrc):
-
+```bash
 cd ~/mechatronics_ws
 colcon build --packages-select node_pkg interfaces_pkg
 source install/setup.bash
+```
 
 2.Instead of running nodes manually in separate terminals, you can launch the entire stack (Simulator, GoToPose Server, and Square Action Server) using a single launch command:
-ros2 launch node_pkg turtlesim.launch.py 
+`ros2 launch node_pkg turtlesim.launch.py`
 
 3.You can dynamically change parameters (such as maximum speeds or turtlesim background colors) at runtime or via YAML configuration files (GoToPose.yaml and turtlesim.yaml):
-ros2 param set /go_to_pose_server max_linear_speed 1.5        -> ex for max linear speed value
+`ros2 param set /go_to_pose_server max_linear_speed 1.5`       -> ex for max linear speed value
 
 *if you want to change it from the .yaml file open the pakage then the config folder then you can find the yaml file and change the parameters value then you have to build and run the launch file again
 
 4.To get or check parameter:
-ros2 param get /go_to_pose_server <wanted_parameter>
+`ros2 param get /go_to_pose_server <wanted_parameter>`
 
 5.To reset the turtle to the center home position , clear the canvas, and disable the pen line during teleportation:
-ros2 service call /reset_turtle std_srvs/srv/Trigger "{}"
+`ros2 service call /reset_turtle std_srvs/srv/Trigger "{}"`
 
 6.To command the turtle to automatically execute a complete square path by visiting all four corners sequentially:
-ros2 action send_goal /draw_square interfaces_pkg/action/Square "{side_length: 2.0}" --feedback
+`ros2 action send_goal /draw_square interfaces_pkg/action/Square "{side_length: 2.0}" --feedback`
 
-Some Project Detials
+##Some Project Detials
 
 Python Nodes (node_pkg):
 go_to_pose_server.py: The main control node. It uses a proportional controller to guide the turtle precisely to target coordinates, handles speed limits, and manages the reset/teleport service.
